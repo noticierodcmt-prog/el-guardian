@@ -1,0 +1,638 @@
+<!DOCTYPE html>
+<!--
+=====================================================================
+  EL GUARDIÁN · Versión 2
+=====================================================================
+  Una sola página, sin servidor. Todo se revisa en el mismo
+  navegador de quien la usa. Nada de lo que pega la persona se envía
+  a ningún lado.
+
+  Qué hace:
+    • Analiza un enlace o un mensaje completo.
+    • Da una calificación en 4 niveles: Seguro, Ten cuidado,
+      Sospechoso y Peligroso.
+    • Explica en palabras simples por qué.
+    • Compara los dominios con sitios oficiales para detectar
+      letras cambiadas (por ejemplo, facebok.com).
+    • Tiene una lista de sitios oficiales y una guía corta.
+    • Botones para copiar el enlace oficial y compartir la advertencia.
+
+  Qué NO hace todavía (requiere un servidor):
+    • Revisar la fecha en que se creó el dominio.
+    • Revisar el certificado de seguridad del sitio.
+    • Recibir reportes de otras personas.
+
+  Estructura del archivo:
+    1. <head>   → datos de la página y estilos
+    2. <body>   → lo que se ve
+    3. <script> → la lógica, dividida en pasos numerados
+
+  Los comentarios que dicen "NOTA" explican el porqué de algo.
+=====================================================================
+-->
+<html lang="es-MX">
+<head>
+  <!-- ==========================================================
+       SECCIÓN 1 · DATOS DE LA PÁGINA Y ESTILOS
+       ========================================================== -->
+  <meta charset="UTF-8">
+
+  <!-- NOTA: "viewport" adapta la página al tamaño del celular.
+       Sin esta línea, el celular la muestra diminuta. -->
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+
+  <title>El Guardián · Revisa antes de entrar</title>
+  <meta name="description" content="Revisa si un enlace o un mensaje parece engaño antes de dar clic o compartir datos.">
+  <meta name="theme-color" content="#0f1a33">
+
+  <meta property="og:title" content="El Guardián · Revisa antes de entrar">
+  <meta property="og:description" content="Revisa si un enlace o un mensaje parece engaño.">
+  <meta property="og:type" content="website">
+
+  <!-- Ícono de la pestaña: un escudo hecho con texto, sin archivos extra. -->
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%9B%A1%EF%B8%8F%3C/text%3E%3C/svg%3E">
+
+  <style>
+    /* ----- 1.1 · COLORES ------------------------------------------
+       NOTA: se cambian aquí, en un solo lugar. */
+    :root {
+      --bg: #0f1a33;
+      --card: #16213e;
+      --card-2: #1c2a4d;
+      --texto: #f5f7fb;
+      --suave: #aab4cc;
+      --borde: #2c3d66;
+      --campo: #0d1730;
+      --acento: #00d9ff;
+      --acento-hover: #5ae6ff;
+      --acento-txt: #00121f;
+
+      /* Colores de los 4 niveles de calificación */
+      --seguro: #3fbf6e;
+      --cuidado: #ffc04d;
+      --sospechoso: #ff8a3d;
+      --peligroso: #f0504f;
+
+      color-scheme: dark;
+    }
+
+    /* NOTA: si el celular está en modo claro, la página cambia sola. */
+    @media (prefers-color-scheme: light) {
+      :root {
+        --bg: #f2f6fb;
+        --card: #ffffff;
+        --card-2: #eef3fa;
+        --texto: #1a1f36;
+        --suave: #5b6780;
+        --borde: #d5deeb;
+        --campo: #ffffff;
+        --acento: #0077b6;
+        --acento-hover: #005f91;
+        --acento-txt: #ffffff;
+        --seguro: #2e9d57;
+        --cuidado: #b58100;
+        --sospechoso: #c25a12;
+        --peligroso: #d13b3b;
+        color-scheme: light;
+      }
+    }
+
+    /* ----- 1.2 · REGLAS GENERALES ---------------------------------- */
+    /* NOTA: "box-sizing" hace que el relleno no agrande los cuadros. */
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html { height: 100%; }
+
+    body {
+      min-height: 100%;
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+      font-size: 16px;
+      line-height: 1.6;
+      color: var(--texto);
+      background: var(--bg);
+      -webkit-text-size-adjust: 100%;
+      padding-top: env(safe-area-inset-top, 0px);
+      padding-bottom: env(safe-area-inset-bottom, 0px);
+    }
+
+    /* NOTA: "[hidden]" oculta algo aunque otra regla intente mostrarlo. */
+    [hidden] { display: none !important; }
+
+    /* NOTA: el contenedor limita el ancho en computadoras para que
+       el texto no se estire demasiado. */
+    .contenedor {
+      width: 100%;
+      max-width: 880px;
+      margin: 0 auto;
+      padding: 0 16px;
+    }
+
+    .sr-only {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip: rect(0 0 0 0);
+      white-space: nowrap;
+    }
+
+    /* ----- 1.3 · ENCABEZADO ---------------------------------------- */
+    .encabezado {
+      background: linear-gradient(135deg, #0f1a33 0%, #16213e 60%, #0b3d5c 100%);
+      color: #f5f7fb;
+      text-align: center;
+      padding: 36px 16px 64px;
+    }
+
+    .encabezado .escudo {
+      font-size: clamp(42px, 9vw, 60px);
+      line-height: 1;
+    }
+
+    .encabezado h1 {
+      margin-top: 8px;
+      font-size: clamp(28px, 6vw, 40px);
+      color: #00d9ff;
+    }
+
+    .encabezado p {
+      margin-top: 6px;
+      font-size: clamp(15px, 3.6vw, 18px);
+      color: #c4cde0;
+    }
+
+    /* ----- 1.4 · PESTAÑAS (menú de arriba) ------------------------- */
+    /* NOTA: la barra de pestañas se "pega" arriba al hacer scroll. */
+    .pestanas {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      margin-top: -28px;
+      background: var(--card);
+      border: 1px solid var(--borde);
+      border-radius: 14px;
+      padding: 6px;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 6px;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+    }
+
+    .pestana {
+      min-height: 48px;
+      padding: 8px 6px;
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--suave);
+      background: transparent;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+    }
+
+    .pestana[aria-selected="true"] {
+      color: var(--acento-txt);
+      background: var(--acento);
+    }
+
+    .pestana:focus-visible,
+    .boton:focus-visible,
+    .chip:focus-visible,
+    .campo:focus-visible,
+    a:focus-visible {
+      outline: 3px solid var(--acento);
+      outline-offset: 2px;
+    }
+
+    /* ----- 1.5 · TARJETAS Y TÍTULOS -------------------------------- */
+    .seccion {
+      margin-top: 24px;
+    }
+
+    .tarjeta {
+      background: var(--card);
+      border: 1px solid var(--borde);
+      border-radius: 16px;
+      padding: 20px;
+      box-shadow: 0 8px 30px rgba(0, 0, 0, 0.14);
+    }
+
+    .tarjeta h2 {
+      font-size: clamp(19px, 4.5vw, 22px);
+      margin-bottom: 8px;
+    }
+
+    .ayuda {
+      color: var(--suave);
+      font-size: 15px;
+    }
+
+    /* ----- 1.6 · CAMPO DE TEXTO Y BOTONES -------------------------- */
+    .campo {
+      width: 100%;
+      padding: 14px 16px;
+      font-size: 16px;          /* NOTA: 16px evita el zoom automático del celular al escribir */
+      font-family: inherit;
+      color: var(--texto);
+      background: var(--campo);
+      border: 1px solid var(--borde);
+      border-radius: 12px;
+      outline: none;
+      resize: vertical;
+    }
+
+    .campo::placeholder { color: var(--suave); opacity: 0.85; }
+
+    .campo:focus {
+      border-color: var(--acento);
+      box-shadow: 0 0 0 3px rgba(0, 217, 255, 0.22);
+    }
+
+    .fila-botones {
+      display: grid;
+      gap: 10px;
+      grid-template-columns: 1fr;   /* NOTA: en celular, un botón debajo del otro */
+      margin-top: 12px;
+    }
+
+    .boton {
+      min-height: 52px;             /* NOTA: 44px o más es cómodo para tocar con el dedo */
+      padding: 12px 18px;
+      font-size: 16px;
+      font-weight: 700;
+      font-family: inherit;
+      text-align: center;
+      text-decoration: none;
+      color: var(--acento-txt);
+      background: var(--acento);
+      border: none;
+      border-radius: 12px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .boton:hover { background: var(--acento-hover); }
+
+    .boton.secundario {
+      color: var(--texto);
+      background: var(--card-2);
+      border: 1px solid var(--borde);
+    }
+
+    .boton.secundario:hover { border-color: var(--acento); }
+
+    .chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 14px;
+      align-items: center;
+      font-size: 14px;
+      color: var(--suave);
+    }
+
+    .chip {
+      min-height: 36px;
+      padding: 6px 12px;
+      font-size: 14px;
+      font-family: inherit;
+      color: var(--texto);
+      background: transparent;
+      border: 1px solid var(--borde);
+      border-radius: 999px;
+      cursor: pointer;
+    }
+
+    .chip:hover { border-color: var(--acento); color: var(--acento); }
+
+    /* ----- 1.7 · ESCALA DE CALIFICACIÓN (los 4 niveles) ------------ */
+    /* NOTA: en celular, los niveles se acomodan en 2 columnas;
+       en computadora, en una sola fila. */
+    .escala {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 8px;
+      margin-top: 14px;
+    }
+
+    .nivel {
+      padding: 10px 8px;
+      font-size: 14px;
+      font-weight: 700;
+      text-align: center;
+      border: 2px solid transparent;
+      border-radius: 10px;
+      background: var(--card-2);
+      color: var(--suave);
+      opacity: 0.55;               /* NOTA: los que no aplican se ven apagados */
+      transition: opacity 0.2s ease;
+    }
+
+    .nivel.activo { opacity: 1; color: var(--texto); }
+    .nivel[data-nivel="seguro"].activo     { border-color: var(--seguro); }
+    .nivel[data-nivel="cuidado"].activo    { border-color: var(--cuidado); }
+    .nivel[data-nivel="sospechoso"].activo { border-color: var(--sospechoso); }
+    .nivel[data-nivel="peligroso"].activo  { border-color: var(--peligroso); }
+
+    /* ----- 1.8 · RESULTADO ----------------------------------------- */
+    .resultado {
+      margin-top: 16px;
+      padding: 18px;
+      border-radius: 14px;
+      border: 2px solid var(--borde);
+      background: var(--card-2);
+    }
+
+    .resultado.seguro     { border-color: var(--seguro); }
+    .resultado.cuidado    { border-color: var(--cuidado); }
+    .resultado.sospechoso { border-color: var(--sospechoso); }
+    .resultado.peligroso  { border-color: var(--peligroso); }
+
+    .resultado h3 {
+      font-size: clamp(19px, 4.5vw, 22px);
+    }
+
+    .resultado .explicacion {
+      margin-top: 6px;
+      font-size: 15px;
+    }
+
+    .resultado .revisado {
+      margin-top: 8px;
+      font-size: 13px;
+      color: var(--suave);
+      word-break: break-all;      /* NOTA: corta enlaces largos para que no salgan de la pantalla */
+    }
+
+    .resultado h4 {
+      margin-top: 16px;
+      font-size: 16px;
+    }
+
+    .resultado ul {
+      list-style: none;
+      margin-top: 6px;
+    }
+
+    .resultado li {
+      font-size: 15px;
+      padding: 9px 0;
+      border-top: 1px solid var(--borde);
+    }
+
+    .acciones {
+      margin-top: 16px;
+    }
+
+    .aviso-copiado {
+      margin-top: 10px;
+      font-size: 14px;
+      color: var(--seguro);
+    }
+
+    /* ----- 1.9 · SITIOS OFICIALES ---------------------------------- */
+    .grupo {
+      margin-top: 20px;
+    }
+
+    .grupo h3 {
+      font-size: 17px;
+      margin-bottom: 10px;
+    }
+
+    .tarjetas {
+      display: grid;
+      gap: 12px;
+      grid-template-columns: 1fr;   /* NOTA: en celular, una tarjeta por fila */
+    }
+
+    .sitio {
+      background: var(--card-2);
+      border: 1px solid var(--borde);
+      border-radius: 14px;
+      padding: 16px;
+    }
+
+    .sitio strong { font-size: 16px; }
+
+    .sitio .dominio {
+      font-size: 14px;
+      color: var(--suave);
+      word-break: break-all;
+    }
+
+    .sitio .botones {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-top: 12px;
+    }
+
+    .sitio .botones .boton { min-height: 44px; font-size: 14px; padding: 8px; }
+
+    /* ----- 1.10 · GUÍA ---------------------------------------------- */
+    .regla {
+      display: grid;
+      grid-template-columns: 40px 1fr;
+      gap: 12px;
+      padding: 14px 0;
+      border-top: 1px solid var(--borde);
+    }
+
+    .regla:first-of-type { border-top: none; }
+
+    .regla .numero {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      font-weight: 700;
+      color: var(--acento-txt);
+      background: var(--acento);
+    }
+
+    .regla p { font-size: 15px; color: var(--suave); }
+    .regla strong { color: var(--texto); }
+
+    details.plegable {
+      margin-top: 16px;
+      background: var(--card-2);
+      border: 1px solid var(--borde);
+      border-radius: 12px;
+      padding: 12px 16px;
+    }
+
+    details.plegable summary {
+      cursor: pointer;
+      font-weight: 700;
+      min-height: 32px;
+    }
+
+    details.plegable p {
+      margin-top: 8px;
+      font-size: 14px;
+      color: var(--suave);
+    }
+
+    /* ----- 1.11 · PIE DE PÁGINA ----------------------------------- */
+    .pie {
+      margin-top: 36px;
+      padding: 20px 0 32px;
+      border-top: 1px solid var(--borde);
+      font-size: 13px;
+      color: var(--suave);
+      text-align: center;
+    }
+
+    .pie p + p { margin-top: 6px; }
+
+    /* ----- 1.12 · TAMAÑOS SEGÚN LA PANTALLA ----------------------- */
+    /* NOTA: "min-width" significa "a partir de este ancho". */
+
+    @media (min-width: 560px) {
+      .fila-botones {
+        grid-template-columns: 1fr 1fr;     /* dos botones lado a lado */
+      }
+      .escala {
+        grid-template-columns: repeat(4, 1fr);  /* los 4 niveles en una fila */
+      }
+      .tarjetas {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+
+    @media (min-width: 900px) {
+      .tarjetas {
+        grid-template-columns: repeat(3, 1fr);
+      }
+      .tarjeta { padding: 26px; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      * { transition: none !important; }
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- ==========================================================
+       SECCIÓN 2 · LO QUE SE VE (HTML)
+       ========================================================== -->
+
+  <!-- 2.1 · Encabezado -->
+  <header class="encabezado">
+    <div class="contenedor">
+      <div class="escudo" aria-hidden="true">🛡️</div>
+      <h1>El Guardián</h1>
+      <p>Revisa un enlace o un mensaje antes de dar clic o compartir datos</p>
+    </div>
+  </header>
+
+  <main class="contenedor">
+
+    <!-- 2.2 · Pestañas: cambian entre las tres pantallas -->
+    <nav class="pestanas" role="tablist" aria-label="Secciones">
+      <button class="pestana" role="tab" id="tab-analizar" aria-controls="pan-analizar" aria-selected="true">Analizar</button>
+      <button class="pestana" role="tab" id="tab-sitios" aria-controls="pan-sitios" aria-selected="false">Sitios oficiales</button>
+      <button class="pestana" role="tab" id="tab-guia" aria-controls="pan-guia" aria-selected="false">Guía</button>
+    </nav>
+
+    <!-- ========================================================
+         2.3 · PANTALLA 1: ANALIZAR
+         ======================================================== -->
+    <section id="pan-analizar" class="seccion" role="tabpanel" aria-labelledby="tab-analizar">
+      <div class="tarjeta">
+        <h2>¿Qué quieres revisar?</h2>
+        <p class="ayuda">Pega el enlace, o el mensaje completo que te llegó. Si el mensaje tiene enlaces, también los revisamos.</p>
+
+        <label for="entrada" class="sr-only">Enlace o mensaje a revisar</label>
+        <!-- NOTA: "textarea" permite pegar mensajes largos con varios renglones. -->
+        <textarea id="entrada" class="campo" rows="5"
+                  placeholder="Ejemplo: https://facebok.com/login o el mensaje completo"></textarea>
+
+        <div class="fila-botones">
+          <button id="btnAnalizar" class="boton" type="button">🔍 Analizar</button>
+          <button id="btnLimpiar" class="boton secundario" type="button">Limpiar</button>
+        </div>
+
+        <!-- 2.4 · Ejemplos para practicar sin escribir -->
+        <div class="chips" aria-label="Ejemplos para probar">
+          <span>Prueba con:</span>
+          <button type="button" class="chip" data-ejemplo="urgente">Mensaje urgente</button>
+          <button type="button" class="chip" data-ejemplo="letras">Letras cambiadas</button>
+          <button type="button" class="chip" data-ejemplo="premio">Premio falso</button>
+          <button type="button" class="chip" data-ejemplo="real">Mensaje real</button>
+        </div>
+      </div>
+
+      <!-- 2.5 · Resultado: aparece después de analizar -->
+      <div id="resultado" class="tarjeta" hidden aria-live="polite">
+        <!-- Escala con los 4 niveles. El JavaScript marca el que corresponde. -->
+        <div class="escala" id="escala" aria-label="Calificación">
+          <div class="nivel" data-nivel="seguro">🟢 Seguro</div>
+          <div class="nivel" data-nivel="cuidado">🟡 Ten cuidado</div>
+          <div class="nivel" data-nivel="sospechoso">🟠 Sospechoso</div>
+          <div class="nivel" data-nivel="peligroso">🔴 Peligroso</div>
+        </div>
+
+        <div id="caja" class="resultado">
+          <h3 id="titulo"></h3>
+          <p class="explicacion" id="explicacion"></p>
+          <p class="revisado" id="revisado"></p>
+
+          <h4>¿Por qué?</h4>
+          <ul id="senales"></ul>
+        </div>
+
+        <!-- 2.6 · Botones de acción después del análisis -->
+        <div class="acciones fila-botones" id="acciones">
+          <button id="btnCopiarOficial" class="boton secundario" type="button" hidden>📋 Copiar enlace oficial</button>
+          <a id="btnCompartir" class="boton" href="#" target="_blank" rel="noopener noreferrer">📤 Compartir advertencia</a>
+        </div>
+        <p id="avisoCopiado" class="aviso-copiado" role="status" hidden></p>
+      </div>
+
+      <!-- 2.7 · Qué no revisa todavía: honestidad sobre los límites -->
+      <details class="plegable">
+        <summary>¿Qué NO revisa todavía esta herramienta?</summary>
+        <p>No revisa la fecha en que se creó el dominio ni el certificado de seguridad del sitio. Para eso se necesita un servidor, y se agregará después. Tampoco confirma si un mensaje realmente vino de quien dice ser.</p>
+      </details>
+    </section>
+
+    <!-- ========================================================
+         2.8 · PANTALLA 2: SITIOS OFICIALES
+         Las tarjetas se llenan con JavaScript, desde la lista SITIOS.
+         ======================================================== -->
+    <section id="pan-sitios" class="seccion" role="tabpanel" aria-labelledby="tab-sitios" hidden>
+      <div class="tarjeta">
+        <h2>Sitios oficiales</h2>
+        <p class="ayuda">Si necesitas entrar a un banco, una red social, una tienda o un trámite de gobierno, usa estos enlaces. Escríbelos tú mismo o cópialos desde aquí.</p>
+        <p class="ayuda" style="margin-top:8px;"><strong>Importante:</strong> esta lista se revisa a mano. Si algún enlace ya no funciona o cambió, no lo uses y confirma en la institución.</p>
+        <div id="listaSitios"></div>
+      </div>
+    </section>
+
+    <!-- ========================================================
+         2.9 · PANTALLA 3: GUÍA
+         ======================================================== -->
+    <section id="pan-guia" class="seccion" role="tabpanel" aria-labelledby="tab-guia" hidden>
+      <div class="tarjeta">
+        <h2>5 reglas para no caer</h2>
+        <p class="ayuda">Si recuerdas solo esto, ya te protege mucho.</p>
+
+        <div class="regla">
+          <div class="numero">1</div>
+          <div><strong>Nadie te pide tu contraseña por mensaje.</strong><p>Ni tu banco, ni una tienda, ni una dependencia de gobierno.</p></div>
+        </div>
+        <div class="regla">
+          <div class="numero">2</div>
+          <div><strong>Si te urge o te asusta, desconfía.</strong><p>La prisa es la herramienta favorita de los engañad
